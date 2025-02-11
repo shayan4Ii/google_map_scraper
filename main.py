@@ -7,6 +7,19 @@ import pandas as pd
 import argparse
 import os
 import sys
+import logging
+
+# Configure logger
+logging.basicConfig(
+    level=logging.INFO,  # Change to DEBUG for more details
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("scraper.log"),  # Logs will be written to this file
+        logging.StreamHandler(sys.stdout)  # Logs will also appear in the console
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class Business:
@@ -123,7 +136,7 @@ def main():
         page.wait_for_timeout(5000)
         
         for search_for_index, search_for in enumerate(search_list):
-            print(f"-----\n{search_for_index} - {search_for}".strip())
+            logger.info(f"-----\n{search_for_index} - {search_for}".strip())
 
             page.locator('//input[@id="searchboxinput"]').fill(search_for)
             page.wait_for_timeout(5000)
@@ -147,24 +160,24 @@ def main():
                     # Stop if we have collected enough listings
                     listings = page.locator('//a[contains(@href, "https://www.google.com/maps/place")]').all()[:total]
                     listings = [listing.locator("xpath=..") for listing in listings]
-                    print(f"Total Scraped: {len(listings)}")
+                    logger.info(f"Total Scraped: {len(listings)}")
                     break
                 elif current_count == previously_counted:
                     # If no new listings appear, increment the counter
                     same_count_attempts += 1
-                    print(f"No new listings, attempt {same_count_attempts}/3")
+                    logger.info(f"No new listings, attempt {same_count_attempts}/3")
                     
                     if same_count_attempts >= 3:
                         # Stop if no new listings appear for 3 consecutive attempts
                         listings = page.locator('//a[contains(@href, "https://www.google.com/maps/place")]').all()
-                        print(f"Arrived at all available\nTotal Scraped: {len(listings)}")
+                        logger.info(f"Arrived at all available\nTotal Scraped: {len(listings)}")
                         break
                 else:
                     # Reset counter if new results appear
                     same_count_attempts = 0
 
                 previously_counted = current_count
-                print(f"Currently Scraped: {current_count}")
+                logger.info(f"Currently Scraped: {current_count}")
 
             business_list = BusinessList()
 
@@ -223,7 +236,7 @@ def main():
                     business_list.business_list.append(business)
 
                 except Exception as e:
-                    print(f'Error occurred: {e}')
+                    logger.error(f'Error occurred: {e}')
 
             
             #########
@@ -232,7 +245,7 @@ def main():
             business_list.save_to_excel(f"google_maps_data_{search_for}".replace(' ', '_'))
             business_list.save_to_csv(f"google_maps_data_{search_for}".replace(' ', '_'))
 
-        print("Scraping complete. Exiting program.")
+        logger.info("Scraping complete. Exiting program.")
         browser.close()
         sys.exit(0)
 
